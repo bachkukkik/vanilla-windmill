@@ -1,0 +1,28 @@
+summary: ''
+description: ''
+lock: '!inline f/fb_ad/fb_get_daily_ads_insight.script.lock'
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  properties:
+    date_end:
+      type: string
+      description: ''
+      default: ''
+      originalType: string
+    date_start:
+      type: string
+      description: ''
+      default: ''
+      originalType: string
+    fb_path_credentials:
+      type: string
+      description: ''
+      default: u/krichkorn/json_fb_app_uxible_ads_mngmt
+      originalType: string
+    lookback:
+      type: integer
+      description: ''
+      default: 1
+  required: []

@@ -1,0 +1,32 @@
+summary: ''
+description: ''
+lock: '!inline f/dataframe/pandas_select_columns.script.lock'
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  properties:
+    lst_resp:
+      type: array
+      description: ''
+      default: null
+      items:
+        type: object
+      originalType: 'object[]'
+      properties: {}
+    selected_cols:
+      type: array
+      description: ''
+      default:
+        - ad_id
+        - date_start
+        - spend
+        - cpc
+        - cpm
+        - ctr
+      items:
+        type: string
+        enum: null
+      originalType: 'string[]'
+  required:
+    - lst_resp

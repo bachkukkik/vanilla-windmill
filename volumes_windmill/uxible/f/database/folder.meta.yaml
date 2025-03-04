@@ -1,0 +1,6 @@
+summary: all database logics
+display_name: database
+extra_perms:
+  u/krichkorn: true
+owners:
+  - u/krichkorn

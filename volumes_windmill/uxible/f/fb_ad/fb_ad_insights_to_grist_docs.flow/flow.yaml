@@ -1,0 +1,140 @@
+summary: ''
+description: ''
+value:
+  modules:
+    - id: a
+      value:
+        type: script
+        input_transforms:
+          date_end:
+            type: static
+            value: ''
+          date_start:
+            type: static
+            value: ''
+          fb_path_credentials:
+            type: static
+            value: u/krichkorn/json_fb_app_uxible_ads_mngmt
+          lookback:
+            type: static
+            value: 1
+        is_trigger: false
+        path: f/fb_ad/fb_get_daily_ads_insight
+    - id: b
+      value:
+        type: forloopflow
+        modules:
+          - id: c
+            value:
+              type: script
+              input_transforms:
+                lst_resp:
+                  type: javascript
+                  expr: results.a
+                selected_cols:
+                  type: javascript
+                  value:
+                    - ad_id
+                    - date_start
+                    - spend
+                    - cpc
+                    - cpm
+                    - ctr
+                  expr: flow_input.iter.value.columns
+              is_trigger: false
+              path: f/dataframe/pandas_select_columns
+          - id: d
+            value:
+              type: script
+              input_transforms:
+                cols_keys:
+                  type: javascript
+                  expr: flow_input.iter.value.cols_keys
+                records:
+                  type: javascript
+                  expr: results.c
+              is_trigger: false
+              path: f/grist/grist_put_records_body_preparer
+          - id: e
+            value:
+              type: script
+              input_transforms:
+                grist_docs_id:
+                  type: javascript
+                  value: ''
+                  expr: flow_input.grist_docs_id
+                grist_docs_table_id:
+                  type: javascript
+                  value: flow_input.iter.value.table_id
+                  expr: flow_input.iter.value.table_id
+                grist_path_credentials:
+                  type: static
+                  value: u/krichkorn/json_grist_credentials_sw_kukkik
+                grist_put_body:
+                  type: javascript
+                  value: null
+                  expr: results.d
+              is_trigger: false
+              path: f/grist/grist_upsert_table
+        iterator:
+          type: javascript
+          expr: flow_input.lst_dct_grist_upsert_specs
+        parallel: true
+        skip_failures: false
+      skip_if:
+        expr: results.a.length === 0
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - grist_docs_id
+    - lst_dct_grist_upsert_specs
+    - lookback
+  properties:
+    grist_docs_id:
+      type: string
+      description: ''
+      default: ''
+      nullable: false
+    lookback:
+      type: number
+      description: ''
+      default: 7
+      nullable: false
+    lst_dct_grist_upsert_specs:
+      type: object
+      description: ''
+      default:
+        - cols_keys:
+            - ad_id
+            - date_start
+          columns:
+            - campaign_id
+            - adset_id
+            - ad_id
+            - campaign_name
+            - adset_name
+            - ad_name
+            - reach
+            - impressions
+            - unique_clicks
+            - clicks
+            - inline_link_clicks
+            - inline_post_engagement
+            - date_start
+          table_id: NT_Metrics
+        - cols_keys:
+            - ad_id
+            - date_start
+          columns:
+            - ad_id
+            - spend
+            - cpc
+            - cpm
+            - ctr
+            - date_start
+          table_id: NT_Spent
+  required:
+    - lst_dct_grist_upsert_specs
+    - grist_docs_id
+    - lookback

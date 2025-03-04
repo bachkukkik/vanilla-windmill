@@ -1,0 +1,4 @@
+description: null
+value:
+  api_key: '$var:u/krichkorn/anthropic_windmill_codegen'
+resource_type: anthropic

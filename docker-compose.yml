@@ -1,12 +1,30 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "${LOG_MAX_SIZE:-20m}"
+    max-file: "${LOG_MAX_FILE:-10}"
+    compress: "true"
+
+x-shared-env: &shared-windmill-env
+  DATABASE_URL: ${DATABASE_URL}
+  BASE_URL: ${BASE_URL:-mydomain.com}
+  SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET}
+  SUPERADMIN_SECRET: ${SUPERADMIN_SECRET:-superadminsecret}
+  DENO_AUTH_TOKENS: ${DENO_AUTH_TOKENS:-denoauthsecret}
+  WM_MOCKED_API_FILE: ${WM_MOCKED_API_FILE:-/usr/src/api/mocked}
+  WORKER_GROUP: ${WORKER_GROUP:-default}
+  NUM_WORKERS: ${NUM_WORKERS:-8}
+  SLEEP_QUEUE: ${SLEEP_QUEUE:-200}
+
 services:
-  db:
+  postgres:
     deploy:
       # To use an external database, set replicas to 0 and set DATABASE_URL to the external database url in the .env file
       replicas: 1
-    image: postgres:latest
+    image: postgres:17
     shm_size: 1g
     restart: unless-stopped
-    volumes:
+    volumes:  
       - db_data:/var/lib/postgresql/data
     expose:
       - 5432
@@ -26,6 +44,7 @@ services:
       cloudflare:
         aliases:
           - ${DB_NETWORK_ALIAS:-vanilla-windmill-db}
+    logging: *default-logging
 
   windmill_server:
     image: ${WM_IMAGE:-ghcr.io/windmill-labs/windmill-main:latest}
@@ -37,15 +56,19 @@ services:
       - 8000
       - 2525
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - MODE=server
+      <<: *shared-windmill-env
+      MODE: server
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     volumes:
       - worker_logs:/tmp/windmill/logs
+      # - server_bin:/usr/src/app
+      - ./volumes_windmill/mocked_api:${WM_MOCKED_API_FILE:-/usr/src/api/mocked}
     networks:
       default:
+      cloudflare:
+    logging: *default-logging
 
   windmill_worker:
     image: ${WM_IMAGE:-ghcr.io/windmill-labs/windmill-main:latest}
@@ -59,11 +82,11 @@ services:
           # for GB, use syntax '2Gi'
     restart: unless-stopped
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - MODE=worker
-      - WORKER_GROUP=default
+      <<: *shared-windmill-env
+      MODE: worker
+      WORKER_GROUP: default
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     # to mount the worker folder to debug, KEEP_JOB_DIR=true and mount /tmp/windmill
     volumes:
@@ -73,6 +96,8 @@ services:
       - worker_logs:/tmp/windmill/logs
     networks:
       default:
+      cloudflare:
+    logging: *default-logging
 
   ## This worker is specialized for "native" jobs. Native jobs run in-process and thus are much more lightweight than other jobs
   windmill_worker_native:
@@ -88,65 +113,71 @@ services:
           # for GB, use syntax '2Gi'
     restart: unless-stopped
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - MODE=worker
-      - WORKER_GROUP=native
-      - NUM_WORKERS=8
-      - SLEEP_QUEUE=200
+      <<: *shared-windmill-env
+      MODE: worker
+      WORKER_GROUP: native
+      NUM_WORKERS: 8
+      SLEEP_QUEUE: 200
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     volumes:
       - worker_logs:/tmp/windmill/logs
     networks:
       default:
+      cloudflare:
+    logging: *default-logging
   # This worker is specialized for reports or scraping jobs. It is assigned the "reports" worker group which has an init script that installs chromium and can be targeted by using the "chromium" worker tag.
-  # windmill_worker_reports:
-  #   image: ${WM_IMAGE}
-  #   pull_policy: always
-  #   deploy:
-  #     replicas: 1
-  #     resources:
-  #       limits:
-  #         cpus: "1"
-  #         memory: 2048M
-  #         # for GB, use syntax '2Gi'
-  #   restart: unless-stopped
-  #   environment:
-  #     - DATABASE_URL=${DATABASE_URL}
-  #     - MODE=worker
-  #     - WORKER_GROUP=reports
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   # to mount the worker folder to debug, KEEP_JOB_DIR=true and mount /tmp/windmill
-  #   volumes:
-  #     # mount the docker socket to allow to run docker containers from within the workers
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #     - worker_dependency_cache:/tmp/windmill/cache
-  #     - worker_logs:/tmp/windmill/logs
-
-  # The indexer powers full-text job and log search, an EE feature.
-  windmill_indexer:
-    image: ${WM_IMAGE}
+  windmill_worker_reports:
+    image: ${WM_IMAGE:-ghcr.io/windmill-labs/windmill-main:latest}
     pull_policy: always
     deploy:
-      replicas: 0 # set to 1 to enable full-text job and log search
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2048M
+          # for GB, use syntax '2Gi'
     restart: unless-stopped
-    expose:
-      - 8001
     environment:
-      - PORT=8001
-      - DATABASE_URL=${DATABASE_URL}
-      - MODE=indexer
+      <<: *shared-windmill-env
+      MODE: worker
+      WORKER_GROUP: reports
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
+    # to mount the worker folder to debug, KEEP_JOB_DIR=true and mount /tmp/windmill
     volumes:
-      - windmill_index:/tmp/windmill/search
+      # mount the docker socket to allow to run docker containers from within the workers
+      - /var/run/docker.sock:/var/run/docker.sock
+      - worker_dependency_cache:/tmp/windmill/cache
       - worker_logs:/tmp/windmill/logs
     networks:
       default:
+      cloudflare:
+    logging: *default-logging
+
+  # # The indexer powers full-text job and log search, an EE feature.
+  # windmill_indexer:
+  #   image: ${WM_IMAGE:-ghcr.io/windmill-labs/windmill-main:latest}
+  #   pull_policy: always
+  #   deploy:
+  #     replicas: 0 # set to 1 to enable full-text job and log search
+  #   restart: unless-stopped
+  #   expose:
+  #     - 8001
+  #   environment:
+  #     <<: *shared-windmill-env
+  #     PORT: 8001
+  #     MODE: indexer
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   volumes:
+  #     - windmill_index:/tmp/windmill/search
+  #     - worker_logs:/tmp/windmill/logs
+  #   networks:
+  #     default:
 
   lsp:
     image: ghcr.io/windmill-labs/windmill-lsp:latest
@@ -158,16 +189,17 @@ services:
       - lsp_cache:/root/.cache
     networks:
       default:
+    logging: *default-logging
 
-  multiplayer:
-    image: ghcr.io/windmill-labs/windmill-multiplayer:latest
-    deploy:
-      replicas: 0 # Set to 1 to enable multiplayer, only available on Enterprise Edition
-    restart: unless-stopped
-    expose:
-      - 3002
-    networks:
-      default:
+  # multiplayer:
+  #   image: ghcr.io/windmill-labs/windmill-multiplayer:latest
+  #   deploy:
+  #     replicas: 0 # Set to 1 to enable multiplayer, only available on Enterprise Edition
+  #   restart: unless-stopped
+  #   expose:
+  #     - 3002
+  #   networks:
+  #     default:
 
   caddy:
     image: ghcr.io/windmill-labs/caddy-l4:latest
@@ -182,14 +214,24 @@ services:
     #   - 25:25
     #   # - 443:443 # Uncomment to enable HTTPS handling by Caddy
     environment:
-      - BASE_URL=":80"
-      # - BASE_URL=":443" # uncomment and comment line above to enable HTTPS via custom certificate and key files
-      # - BASE_URL=mydomain.com # Uncomment and comment line above to enable HTTPS handling by Caddy
+      BASE_URL: ":80"
+      # BASE_URL: ":443" # uncomment and comment line above to enable HTTPS via custom certificate and key files
+      # BASE_URL: ${BASE_URL:-mydomain.com} # Uncomment and comment line above to enable HTTPS handling by Caddy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.windmill-caddy.rule=Host(`${BASE_URL}`)
+      - traefik.http.routers.windmill-caddy.service=windmill-caddy
+      - traefik.http.routers.windmill-caddy.entrypoints=websecure
+      - traefik.http.routers.windmill-caddy.tls=true
+      - traefik.http.routers.windmill-caddy.tls.certresolver=myresolver
+      - traefik.http.services.windmill-caddy.loadbalancer.server.port=80
+      - autoheal-app=true
     networks:
       default:
       cloudflare:
         aliases:
           - ${CADDY_NETWORK_ALIAS:-vanilla-windmill-caddy}
+    logging: *default-logging
 
 volumes:
   db_data:
@@ -198,6 +240,12 @@ volumes:
       type: none
       o: bind
       device: ${VOLUME_DOCKER:-/home/pi/docker_volumes}/postgres
+  # server_bin:
+  #   driver: local
+  #   driver_opts:
+  #     type: none
+  #     o: bind
+  #     device: ${VOLUME_DOCKER:-/home/pi/docker_volumes}/server_bin
   worker_dependency_cache:
     driver: local
     driver_opts:
@@ -210,12 +258,12 @@ volumes:
       type: none
       o: bind
       device: ${VOLUME_DOCKER:-/home/pi/docker_volumes}/worker_logs
-  windmill_index:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${VOLUME_DOCKER:-/home/pi/docker_volumes}/windmill_index
+  # windmill_index:
+  #   driver: local
+  #   driver_opts:
+  #     type: none
+  #     o: bind
+  #     device: ${VOLUME_DOCKER:-/home/pi/docker_volumes}/windmill_index
   lsp_cache:
     driver: local
     driver_opts:

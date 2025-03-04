@@ -1,0 +1,32 @@
+summary: ''
+description: ''
+lock: '!inline f/grist/grist_upsert_table.script.lock'
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  properties:
+    grist_docs_id:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+    grist_docs_table_id:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+    grist_path_credentials:
+      type: string
+      description: ''
+      default: u/krichkorn/json_grist_credentials_sw_kukkik
+      originalType: string
+    grist_put_body:
+      type: object
+      description: ''
+      default: null
+      properties: {}
+  required:
+    - grist_docs_id
+    - grist_docs_table_id
+    - grist_put_body

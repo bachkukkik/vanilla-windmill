@@ -1,0 +1,17 @@
+description: ''
+value: |-
+  {
+      "Any": "TEXT",
+      "Text": "TEXT",
+      "Numeric": "NUMERIC",
+      "Int": "INTEGER",
+      "Bool": "BOOLEAN",
+      "Date": "INTEGER",
+      "DateTime": "INTEGER",
+      "Choice": "TEXT",
+      "ChoiceList": "JSONB",
+      "Ref": "INTEGER",
+      "RefList": "INTEGER[]",
+      "Attachments": "BYTEA"
+  }
+is_secret: false

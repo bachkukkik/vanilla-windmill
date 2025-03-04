@@ -1,0 +1,9 @@
+description: ''
+value:
+  dbname: postgres
+  host: vanilla-grist-supabase-pg-sqlite-fdw
+  password: '$var:u/krichkorn/vanilla_grist_supabase_pg_sqlite_fdw'
+  port: 5432
+  root_certificate_pem: ''
+  user: postgres
+resource_type: postgresql

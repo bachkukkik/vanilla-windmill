@@ -1,0 +1,25 @@
+summary: ''
+description: ''
+lock: '!inline f/database/pg_execute_query.script.lock'
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  properties:
+    db_path_credentials:
+      type: string
+      description: ''
+      default: u/krichkorn/json_vanilla_grist_supabase_pg_sqlite_fdw
+      originalType: string
+    drivername:
+      type: string
+      description: ''
+      default: postgresql+psycopg2
+      originalType: string
+    query:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+  required:
+    - query

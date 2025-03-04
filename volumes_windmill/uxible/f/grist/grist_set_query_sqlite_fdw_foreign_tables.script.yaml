@@ -1,0 +1,27 @@
+summary: ''
+description: ''
+lock: '!inline f/grist/grist_set_query_sqlite_fdw_foreign_tables.script.lock'
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  properties:
+    dct_resp:
+      type: object
+      description: ''
+      default: null
+      properties: {}
+    grist_docs_id:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+    grist_docs_table_id:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+  required:
+    - grist_docs_id
+    - grist_docs_table_id
+    - dct_resp

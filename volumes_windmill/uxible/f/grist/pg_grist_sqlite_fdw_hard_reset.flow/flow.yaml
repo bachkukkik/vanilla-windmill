@@ -1,0 +1,97 @@
+summary: ''
+description: ''
+value:
+  modules:
+    - id: a
+      value:
+        type: script
+        input_transforms:
+          grist_docs_id:
+            type: javascript
+            expr: flow_input.grist_docs_id
+          grist_path_credentials:
+            type: static
+            value: u/krichkorn/json_grist_credentials_sw_kukkik
+        is_trigger: false
+        path: f/grist/grist_get_list_tables
+    - id: b
+      value:
+        type: forloopflow
+        modules:
+          - id: c
+            value:
+              type: script
+              input_transforms:
+                grist_docs_id:
+                  type: javascript
+                  value: ''
+                  expr: flow_input.grist_docs_id
+                grist_docs_table_id:
+                  type: javascript
+                  expr: 'results.a.tables[flow_input.iter.index].id'
+                grist_path_credentials:
+                  type: static
+                  value: u/krichkorn/json_grist_credentials_sw_kukkik
+              is_trigger: false
+              path: f/grist/grist_get_list_tables_columns
+          - id: d
+            value:
+              type: script
+              input_transforms:
+                dct_resp:
+                  type: javascript
+                  value: null
+                  expr: results.c
+                grist_docs_id:
+                  type: javascript
+                  value: ''
+                  expr: flow_input.grist_docs_id
+                grist_docs_table_id:
+                  type: javascript
+                  value: ''
+                  expr: 'results.a.tables[flow_input.iter.index].id'
+              is_trigger: false
+              path: f/grist/grist_set_query_sqlite_fdw_foreign_tables
+        iterator:
+          type: javascript
+          expr: results.a.tables
+        parallel: true
+        skip_failures: true
+    - id: e
+      value:
+        type: script
+        input_transforms:
+          grist_docs_id:
+            type: javascript
+            expr: flow_input.grist_docs_id
+          lst_foreign_table_queries:
+            type: javascript
+            expr: results.b
+        is_trigger: false
+        path: f/grist/grist_set_query_sqlite_fdw_hard_reset
+    - id: f
+      value:
+        type: script
+        input_transforms:
+          db_path_credentials:
+            type: static
+            value: u/krichkorn/json_vanilla_grist_supabase_pg_sqlite_fdw
+          drivername:
+            type: static
+            value: postgresql+psycopg2
+          query:
+            type: javascript
+            expr: results.e
+        is_trigger: false
+        path: f/database/pg_execute_query
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - grist_docs_id
+  properties:
+    grist_docs_id:
+      type: string
+      description: ''
+      default: ''
+  required: []

@@ -1,0 +1,4 @@
+description: ''
+value:
+  apiKey: '$var:u/krichkorn/anthropic-vanilla-sw'
+resource_type: anthropic
