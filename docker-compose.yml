@@ -21,7 +21,7 @@ services:
     deploy:
       # To use an external database, set replicas to 0 and set DATABASE_URL to the external database url in the .env file
       replicas: 1
-    image: postgres:17
+    image: pgvector/pgvector:pg17
     shm_size: 1g
     restart: unless-stopped
     volumes:  
@@ -39,6 +39,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    labels: 
+      - com.centurylinklabs.watchtower.enable=true
+      - autoheal-app=true
     networks:
       default:
       cloudflare:
@@ -61,6 +64,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    labels: 
+      - com.centurylinklabs.watchtower.enable=true
+      - autoheal-app=true
     volumes:
       - worker_logs:/tmp/windmill/logs
       # - server_bin:/usr/src/app
@@ -74,12 +80,12 @@ services:
     image: ${WM_IMAGE:-ghcr.io/windmill-labs/windmill-main:latest}
     pull_policy: always
     deploy:
-      replicas: 3
+      replicas: 1
       resources:
         limits:
-          cpus: "1"
-          memory: 2048M
-          # for GB, use syntax '2Gi'
+          cpus: 8
+          memory: 16G
+          # for GB, use syntax '2G'
     restart: unless-stopped
     environment:
       <<: *shared-windmill-env
@@ -88,6 +94,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    labels: 
+      - com.centurylinklabs.watchtower.enable=true
+      - autoheal-app=true
     # to mount the worker folder to debug, KEEP_JOB_DIR=true and mount /tmp/windmill
     volumes:
       # mount the docker socket to allow to run docker containers from within the workers
@@ -121,6 +130,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    labels: 
+      - com.centurylinklabs.watchtower.enable=true
+      - autoheal-app=true
     volumes:
       - worker_logs:/tmp/windmill/logs
     networks:
@@ -146,6 +158,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    labels: 
+      - com.centurylinklabs.watchtower.enable=true
+      - autoheal-app=true
     # to mount the worker folder to debug, KEEP_JOB_DIR=true and mount /tmp/windmill
     volumes:
       # mount the docker socket to allow to run docker containers from within the workers
@@ -185,6 +200,9 @@ services:
     restart: unless-stopped
     expose:
       - 3001
+    labels: 
+      - com.centurylinklabs.watchtower.enable=true
+      - autoheal-app=true
     volumes:
       - lsp_cache:/root/.cache
     networks:
@@ -221,10 +239,11 @@ services:
       - traefik.enable=true
       - traefik.http.routers.windmill-caddy.rule=Host(`${BASE_URL}`)
       - traefik.http.routers.windmill-caddy.service=windmill-caddy
-      - traefik.http.routers.windmill-caddy.entrypoints=websecure
+      - traefik.http.routers.windmill-caddy.entrypoints=https
       - traefik.http.routers.windmill-caddy.tls=true
       - traefik.http.routers.windmill-caddy.tls.certresolver=myresolver
       - traefik.http.services.windmill-caddy.loadbalancer.server.port=80
+      - com.centurylinklabs.watchtower.enable=true
       - autoheal-app=true
     networks:
       default:
